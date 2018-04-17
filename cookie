@@ -1,0 +1,728 @@
+import discord 
+import asyncio
+import random
+import string
+import traceback
+import sys
+import requests
+import time
+import os
+import aiohttp
+import glob
+import json
+from urllib.request import urlopen
+from itertools import count
+from discord.ext import commands
+from discord.ext.commands import Bot
+pybot = commands.Bot(command_prefix='&')
+pybot.remove_command('help')
+if not discord.opus.is_loaded():
+    discord.opus.load_opus('opus')
+@pybot.event
+async def on_ready():
+    print('Logged in as')
+    print(pybot.user.name)
+    print(pybot.user.id)
+    print ("Bot is in "+ str(len(pybot.guilds)) + " servers.")
+    print('------')
+    pybot.loop.create_task(presence_task())
+@pybot.event
+async def presence_task():
+    while not pybot.is_closed():
+        await pybot.change_presence(status=discord.Status.online, activity = discord.Game(name=("With your cookies")))
+        await asyncio.sleep(8)
+        #await pybot.change_presence(status = discord.Status.do_not_disturb ,activity=discord.Activity(type=discord.ActivityType.watching, name= str(len(pybot.guilds)) + " servers."))
+        await pybot.change_presence(activity=discord.Streaming(name="&help", url="https://www.twitch.tv/strawender"))
+        await asyncio.sleep(10)
+#------------------
+#Logoff 
+@commands.is_owner()
+@pybot.command(pass_context=True)    
+async def shutdown(ctx):
+    await ctx.send("Shutting down Bot")
+    print ("Bot has been Shut Down")
+    await pybot.logout()
+#Server list
+@pybot.command(pass_context=True)
+async def servers(ctx):
+    await ctx.send(ctx.bot.user.mention + " is in "+ str(len(pybot.guilds)) + " servers.")
+#Song lists for *sing command 
+song1 = ["What is love?","Baby don't hurt me","Don't hurt me","No more","I don't know why you're not fair","I give you my love, but you don't care","So what is right and what is wrong?"\
+         ,"Gimme a sign","What is love?","Baby don't hurt me","Don't hurt me","No more","Finished"]
+#New Help that's should accomodate all commands with ease, probably with the use of reactions
+@pybot.command()
+async def help(ctx):
+    msg = await ctx.send("`Help Menu`")
+    def check(reaction, user):
+        return user == ctx.message.author and str(reaction.emoji) == (u"\u27A1")
+    while True:
+        i = 1
+        try:
+            helplist = open("C:/Users/Amla/Desktop/New folder/help"+(str(i))+".txt","r")
+            cont = helplist.read()
+            embed = discord.Embed(colour= 0x1ebbd7)
+            embed.set_author(name = "Bot Prefix = `&`")
+            embed.set_thumbnail(url= pybot.user.avatar_url)
+            embed.description = (cont)
+            embed.set_footer(text = ("Page "+(str(i))+"/2"))
+            await msg.edit(embed = embed)
+        finally:
+            helplist.close()
+        try:
+            await msg.add_reaction(u"\u27A1")
+            i += 1
+            await pybot.wait_for('reaction_add', timeout=60, check=check)
+        except asyncio.TimeoutError:
+            await msg.clear_reactions()
+            break
+        try:
+            helplist = open("C:/Users/Amla/Desktop/New folder/help"+(str(i))+".txt","r")
+            cont = helplist.read()
+            embed = discord.Embed(colour= 0x1ebbd7)
+            embed.set_author(name = "Bot Prefix = `&`")
+            embed.set_thumbnail(url= pybot.user.avatar_url)
+            embed.description = (cont)
+            embed.set_footer(text = ("Page "+(str(i))+"/2"))
+            await msg.edit(embed = embed)
+        finally:
+            helplist.close()
+        try:
+            await pybot.wait_for('reaction_add', timeout=60, check=check)
+        except asyncio.TimeoutError:
+            await msg.clear_reactions()
+            break            
+#Sing
+@pybot.command(pass_context=True)    
+async def sing(ctx):
+    msg = await ctx.send(song1[0])
+    await asyncio.sleep(2)
+    for counter in range (1,len(song1)):
+        await msg.edit(content=(song1[(counter)]))
+        await asyncio.sleep(2)
+    await msg.add_reaction(u"\U0001F44F")
+#Invite link - \n\n-`botserver` - Link to the bots original server! :)
+@pybot.command(pass_context=True)
+async def botserver(ctx):
+    await ctx.send("https://discord.gg/cxtFZh6")
+#Coinflip 
+@pybot.command(pass_context=True)
+async def coinflip(ctx):
+    choice = random.choice(['Heads!','Tails!'])
+    await ctx.send(choice)
+#PhotoOfTheDay 
+@pybot.command(pass_context=True)
+async def daily(ctx):
+    daily = ['https://www.nationalgeographic.com/photography/photo-of-the-day/','https://www.standard.co.uk/news/world/best-pictures-of-the-day-a3648561.html']
+    #embed = discord.Embed(color = ctx.message.author.color)
+    #embed.description = ("Photo Of The Day")
+    for i in range(0,len(daily)):
+        #embed.set_image(url=(daily[i]))
+        #await ctx.send(embed = embed)
+        await ctx.send(daily[i])
+#FtoC 
+@pybot.command(pass_context=True)  
+async def ftoc(ctx,temp):
+    number = float(temp)
+    number = round((number-32)/1.8)    
+    await ctx.send(str(temp)+' Fahrenheit is = ' +str(number)+' Celsius')
+#CtoF 
+@pybot.command(pass_context=True)  
+async def ctof(ctx,temp):
+    number = float(temp)
+    number = round((number*1.8)+32)   
+    await ctx.send(str(temp)+' Celsius is = ' +str(number)+' Fahrenheit')
+#say 
+@pybot.command(pass_context=True)
+async def say(ctx,*,chat):
+    try:
+        await ctx.message.delete()
+        await ctx.channel.send(chat)
+    except:
+        await ctx.channel.send(chat)
+#embed 
+@pybot.command(pass_context=True)
+async def embed(ctx,*, message: str):
+    try:
+        await ctx.message.delete()
+        embed = discord.Embed(color = ctx.message.author.color)
+        embed.set_author(name = ctx.message.author.name, icon_url = ctx.message.author.avatar_url)
+        embed.description = (message)
+        embed.set_footer(text = ctx.bot.user.name)
+        await ctx.send(embed = embed)
+    except:
+        embed = discord.Embed(color = ctx.message.author.color)
+        embed.set_author(name = ctx.message.author.name, icon_url = ctx.message.author.avatar_url)
+        embed.description = (message)
+        embed.set_footer(text = ctx.bot.user.name)
+        await ctx.send(embed = embed)
+#kill
+kill_gif = ["https://media.giphy.com/media/26uTrZhmJaBGQD5ok/giphy.gif","https://media.giphy.com/media/kOA5F569qO4RG/giphy.gif"]
+@pybot.command()
+async def kill(ctx, *, member: discord.Member = None):
+    if member is None:
+        embed=discord.Embed(title="No one to kill!", description="You havent mentioned anyone to kill!", color=0xff0000)
+        embed.set_thumbnail(url="http://i.imgur.com/6YToyEF.png")
+        embed.set_footer(text="SMH")
+        await ctx.send(embed=embed)
+    elif member.id == 427107456959643669:
+        await ctx.send("Pfft, you gotta try harder than that to kill ME")
+    elif member.id == ctx.message.author.id:
+        embed=discord.Embed(title="Call this number now", description="1-800-784-2433", color=0xff0000)
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/NHS-Logo.svg/1200px-NHS-Logo.svg.png")
+        embed.set_image(url="http://4.bp.blogspot.com/-FL6mKTZOk94/UBb_9EuAYNI/AAAAAAAAOco/JWsTlyInMeQ/s400/Jean+Reno.gif")
+        embed.set_footer(text="Rest In Pieces")
+        await ctx.send(embed=embed)
+    else:
+        embed=discord.Embed(title="Killed!", description="{} Was killed by {} ,OOF ".format(member.mention, ctx.message.author.name),color=0xff0000)
+        embed.set_image(url="https://media.giphy.com/media/kOA5F569qO4RG/giphy.gif")
+        embed.set_footer(text="Rest In Pieces")
+        await ctx.send(embed=embed)
+#Hug
+@pybot.command()
+async def hug(ctx, *, member : discord.Member=None):
+    if member is None:
+        embed = discord.Embed(color =0xb615c1)
+        embed.set_author(name = ctx.message.author.name, icon_url = ctx.message.author.avatar_url)
+        embed.description = ("{} has been hugged!".format(ctx.message.author.mention))
+        msg = await ctx.send(embed = embed)
+        await msg.add_reaction(u"\u2764")
+    elif member.id == ctx.message.author.id:
+        embed = discord.Embed(color =0xdb4104)
+        embed.set_author(name = ctx.message.author.name, icon_url = ctx.message.author.avatar_url)
+        embed.description = ("{} hugged themselves because they are a loner.".format(ctx.message.author.mention))
+        await ctx.send(embed = embed)
+    else:
+        embed = discord.Embed(color =0xdb3f9d)
+        embed.set_author(name = ctx.message.author.name, icon_url = ctx.message.author.avatar_url)
+        embed.description = ("{} was hugged by {}".format(member.mention, ctx.message.author.mention))
+        msg = await ctx.send(embed = embed)
+        await msg.add_reaction(u"\u2764")
+#Bigtext 
+NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+@pybot.command()
+async def bigtext(ctx, *, convert):
+        emojified = ("")
+        for char in convert:
+            if char.lower() in string.ascii_lowercase:
+                emojified += ":regional_indicator_{0}:".format(char.lower())
+            elif char.isnumeric():
+                emojified += ":{0}: ".format(NUMBERS[int(char)])
+            elif char.isspace():
+                emojified += "   "
+            else:
+                emojified += char.replace("!", ":exclamation:").replace("?", ":question:")
+        if len(emojified) >= 2000:
+            await ctx.send('Message Exceeds Limit of 2000 Characters')
+        else:
+            await ctx.send (emojified)
+#choice 
+@pybot.command()
+async def choose(ctx, *, choices):
+    choices_list = choices.split(",")
+    choice = random.choice(choices_list)
+    await ctx.send(choice)
+#Send to specific channel
+@pybot.command(pass_context=True)
+async def talk(ctx,channel: discord.TextChannel,*,text):
+    await channel.send(text)
+#Dog Api 
+@pybot.command(pass_context=True)
+async def dog(ctx):
+    try:
+        async with ctx.typing():
+            api = "https://api.thedogapi.co.uk/v2/dog.php"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api) as r:
+                    if r.status == 200:
+                        response = await r.json()
+                        embed = discord.Embed(color = ctx.message.author.color)
+                        embed.set_author(name = "{} here is your dog".format(ctx.message.author.name))
+                        embed.set_image(url = response['data'][0]["url"])
+                        await ctx.send(embed = embed)
+    except:
+        await ctx.send("Error Occurred. Try Again Later.")
+#cat Api
+@pybot.command(pass_context=True)
+async def cat(ctx):
+    try:
+        async with ctx.typing():
+            response = requests.get('https://aws.random.cat/meow')
+            data = response.json()
+            embed = discord.Embed(color = ctx.message.author.color)
+            embed.set_author(name = "{} here is your cat".format(ctx.message.author.name))
+            embed.set_image(url = data['file'])
+            await ctx.send(embed = embed)
+    except:
+        await ctx.send("Error Occurred. Try Again Later.")
+#Urban
+@pybot.command(pass_context=True)
+async def urban2(ctx,*,msg):
+    try:
+        word = ' '.join(msg)
+        api = "http://api.urbandictionary.com/v0/define"
+        response = requests.get(api, params=[("term", word)]).json()
+        if len(response["list"]) == 0:
+            return await ctx.send("Could not find that word!")
+        embed = discord.Embed(title = ":books: Search Word", description = word, color = ctx.message.author.color)
+        embed.add_field(name = "Top definition:", value = response['list'][0]['definition'])
+        embed.add_field(name = "Examples:", value = response['list'][0]["example"])
+        embed.set_footer(text = "Tags: " + ', '.join(response['tags']))
+        await ctx.send(embed = embed)
+    except:
+        embed = discord.Embed(title = ":books: Search Word", description = word, color = ctx.message.author.color)
+        try:
+            embed.add_field(name = "Top definition:", value = response['list'][0]['definition'])
+            await ctx.send(embed = embed)
+        except:
+            await ctx.send("Error Occured: Sending Link Instead")
+            msg = msg.replace(" ","+")
+            await ctx.send("https://www.urbandictionary.com/define.php?term={}".format(msg))
+#New Urban dictionary- - - -
+@pybot.command(pass_context=True)
+async def urban(ctx,*,msg):
+    def check(reaction, user):
+        return user == ctx.message.author and str(reaction.emoji) == (u"\u27A1")
+    word = ' '.join(msg)
+    api = "http://api.urbandictionary.com/v0/define"
+    response = requests.get(api, params=[("term", word)]).json()
+    msg = await ctx.send("Searching...")
+    if len(response["list"]) == 0:
+        await msg.edit(content = "Could not find that word!")
+    for i in range(len(response["list"])):
+        try:
+            embed = discord.Embed(title = ":books: Search Word", description = word, color = ctx.message.author.color)
+            embed.add_field(name = "Top definition:", value = response['list'][i]['definition'])
+            embed.add_field(name = "Examples:", value = response['list'][i]["example"])
+            embed.set_footer(text = "Tags: " + ', '.join(response['tags']))
+            await msg.edit(embed = embed)
+            try:
+                await msg.add_reaction(u"\u27A1")
+                await pybot.wait_for('reaction_add', timeout=60, check=check)
+            except asyncio.TimeoutError:
+                await msg.clear_reactions()
+                break
+        except Exception:
+            pass
+#8ball
+ball_res = ["According to my calculations, No","Don't count on it","Impossible","Abandon that idea","My sources say no","The stars are not in your favour",\
+"#BlameEnder","You're standing on thin ice","Don't Bet On It","Unlikely","Maybe, but i recommend No","Forget about it","According to my calculations, Yes",\
+"As i see it, Yes","The chances are high","without a doubt","The stars are in your favour","You may rely on it","Certainly","Looks like yes","Brilliant Idea"\
+,"Go for it","You can do it!","Yes - Definitely","Try again later","I've been abducted by aliens, Try again later",\
+"I have other problems to worry about","I have a headache, ask me later","What makes you think that's a good idea?!"]
+@pybot.command(name ="8ball")
+async def eightball(ctx,*,question:str):
+    ball_res_two = random.choice(ball_res)
+    embed = discord.Embed(title = "{} Asked: {}".format(ctx.message.author.name, question), color = ctx.message.author.color)
+    embed.description = (":8ball: | ")+(ball_res_two)
+    embed.set_footer(text = "I'm Never Wrong")
+    await ctx.send(embed = embed)
+#Ping 
+@pybot.command(pass_context=True)
+async def ping(ctx):
+    pingtime = time.time()
+    pingms = await ctx.send("Calculating Ping....")
+    ping = (time.time() - (pingtime))*1000
+    round_ping = round(int(ping), 2)
+    await pingms.edit(content=("Ping Time is : "+str(round_ping) + "` MS!`"))
+#PM User Mentioned 
+@commands.is_owner()
+@pybot.command(pass_context=True)
+async def pm(ctx, member:discord.Member, *, msg):
+    await ctx.message.delete()
+    await member.send(msg)
+#pm Embed 
+@commands.is_owner()
+@pybot.command(pass_context=True)
+async def pmembed(ctx, member:discord.Member, *, msg):
+    embed = discord.Embed(color = ctx.message.author.color)
+    embed.set_author(name = (ctx.message.author.name), icon_url = ctx.message.author.avatar_url)
+    embed.description = (msg)
+    embed.set_footer(text = "Sent By " + (ctx.message.author.name))
+    await member.send(embed = embed)
+#Dice Roll
+@pybot.command(pass_context=True)
+async def dice(ctx):
+    await ctx.send("You rolled the number: " + str(random.randint(1,6)))
+#Reverse Text 
+@pybot.command(pass_context=True)
+async def reverse(ctx, *,text):
+    reverse_text = text[::-1]
+    await ctx.send(reverse_text)
+#Game - roulette 
+@pybot.command(pass_context=True)
+async def roulette(ctx, *,players_list):
+    players = players_list.split(",")
+    randomnum = random.sample(range(0,((len(players)))),len(players))
+    async with ctx.typing():
+        if len(players)<=1:
+            await ctx.send("More players required {}\n**OR**\nSeparate Names Using Commas.".format(ctx.message.author.mention))
+        else:
+            for i in range(len(players)-1):
+                await ctx.send("**-----Round **"+str(i+1)+"**-----**")
+                await ctx.send(players[randomnum[i]] + " Has been Killed. RIP")
+                await asyncio.sleep(1.5)
+            await ctx.send("**----WINNER----**\n`The sole survivor is` " + players[randomnum[len(players)-1]])
+#Roles 
+@commands.has_permissions(manage_roles=True)
+@pybot.command(pass_context=True)
+async def addrole(ctx,member:discord.Member,*,roles: str):
+    try:
+        role = discord.utils.get(ctx.guild.roles, name=(roles))
+        await member.add_roles(role)
+        await ctx.send("{} was added to {}".format(role,member.mention))
+    except:
+        await ctx.send("Error: No Permissions")
+#Roles - Remove Rolea
+@commands.has_permissions(manage_roles=True)
+@pybot.command(pass_context=True)
+async def removerole(ctx,member:discord.Member,*,roles: str):
+    try:
+        role = discord.utils.get(ctx.guild.roles, name=(roles))
+        await member.remove_roles(role)
+        await ctx.send("{} was removed from {}".format(role,member.mention))
+    except:
+        await ctx.send("Error: No Permissions")
+#Kick members
+@commands.has_permissions(kick_members=True)
+@pybot.command()
+async def kick(ctx,member:discord.Member,*,reason=None):
+    if reason == None:
+        await member.kick()
+        await ctx.send("{} was kicked!".format(member.mention))
+    else:
+        await member.kick(reason)
+        await ctx.send("{} was kicked!\nReason: {}".format(member.mention,reason))
+#Ban members
+@commands.has_permissions(ban_members=True)
+@pybot.command()
+async def ban(ctx,member:discord.Member,*,reason=None):
+    if reason == None:
+        await member.ban()
+        await ctx.send("{} was Banned!".format(member.mention))
+    else:
+        await member.ban(reason)
+        await ctx.send("{} was Banned!\nReason: {}".format(member.mention,reason))
+#PurgePurge
+@commands.has_permissions(administrator=True)
+@pybot.command()
+async def purge(ctx,amount:int):
+    await ctx.message.delete()
+    if amount > 100:
+        await ctx.send("Can't purge over the limit of")
+    else:
+        channel = ctx.message.channel
+        deleted = await channel.purge(limit=(amount))
+        await ctx.send('Deleted {} message(s)'.format(len(deleted)))
+    
+#Rainbow role - Changing roles - add edit
+red = [255,255,255,255,255,255,255,212,170,127,84,42,0,0,0,0,0,0,0,0,0,0,0,0,0,42,84,127,170,212,255,255,255,255,255,255]
+green = [0,42,84,127,170,212,255,255,255,255,255,255,255,255,255,255,255,255,255,212,170,127,84,42,0,0,0,0,0,0,0,0,0,0,0,0]
+blue = [0,0,0,0,0,0,0,0,0,0,0,0,0,42,84,127,170,212,255,255,255,255,255,255,255,255,255,255,255,255,255,212,170,127,84,42]
+check = 0
+#RainbowRoles
+@commands.has_permissions(manage_roles=True)
+@pybot.command(pass_context=True)
+async def rainbow(ctx,member:discord.Member):#, cycle:int = None
+    global check
+    check += 1
+    print (len(red))
+    #if cycle == None:
+    if check == 1:
+        try:
+            role = discord.utils.get(ctx.guild.roles,name=("Rainbowz"))
+            await member.add_roles(role)
+            for i in range(len(red)):
+                await role.edit(colour=discord.Color.from_rgb(red[i],green[i],blue[i]))
+                await asyncio.sleep(2)
+            await role.edit(colour=discord.Color.default())
+            for member in role.members:
+                await member.remove_roles(role)
+            check = 0
+        except:
+            await ctx.send('Error Occured :C\nBot role should be higher than the role "Rainbowz"')
+    elif check != 1:
+        role = discord.utils.get(ctx.guild.roles,name=("Rainbowz"))
+        await member.add_roles(role)
+#Addition
+@pybot.command(pass_context=True)
+async def math(ctx,math_type):
+    if math_type == "add":
+        num1 = random.randint(-1000,1000)
+        num2 = random.randint(-1000,1000)
+        result = num1 + num2
+        print (result)
+        await ctx.send("Add: "+str(num1)+"+"+str(num2))
+    elif math_type == "subtract":
+        num1 = random.randint(0,1000)
+        num2 = random.randint(0,1000)
+        result = num1 - num2
+        print (result)
+        await ctx.send("Subtract: "+str(num1)+"-"+str(num2))
+    elif math_type == "multiply":
+        num1 = random.randint(0,100)
+        num2 = random.randint(0,15)
+        result = int(num1 * num2)
+        print (result)
+        await ctx.send("Multiply: "+str(num1)+"x"+str(num2))
+    elif math_type == "divide":
+        num1 = random.randint(0,500)
+        num2 = random.randint(1,25)
+        while num1%num2 != 0:
+            num1 = random.randint(0,500)
+            num2 = random.randint(1,20)
+        result = int(num1 / num2)
+        print (result)
+        await ctx.send("Divide: "+str(num1)+"÷"+str(num2))
+    def check(m):
+        return m.content == str(result)
+    try:
+        await pybot.wait_for(('message'), check=check,timeout=14)
+    except asyncio.TimeoutError:
+        await ctx.send("Took too long. The Answer was: "+str(result))
+    else:
+        await ctx.send("{} - Correct. The answer was: ".format(ctx.message.author.mention) +str(result))
+#Random Colours
+@pybot.command(pass_context=True)
+async def colour(ctx):
+    random_colour = discord.Color(random.randint(0x000000, 0xFFFFFF))
+    hexadecimal_colour = discord.Colour.to_rgb(random_colour)
+    embed = discord.Embed(colour = random_colour )
+    embed.description = (str(random_colour) +"\nRGB = "+ str(hexadecimal_colour))
+    await ctx.send(embed = embed)
+#Tags
+@pybot.command(pass_context=True)
+async def tag(ctx,tagname: str):
+   os.chdir("C:/Users/Amla/Desktop/New folder/New folder")
+   try:
+       taglist = open((tagname)+".txt","r")
+       cont = taglist.read()
+       await ctx.send(cont)
+   finally:
+       taglist.close()
+@pybot.command(pass_context=True)
+async def tagcreate(ctx,tagname:str,*,tagcontent:str):
+   os.chdir("C:/Users/Amla/Desktop/New folder/New folder")
+   if os.path.isfile(str(tagname)+".txt"):
+       await ctx.send("Tag Already Exists!")
+   else:
+       try:
+           newtag = open((tagname)+".txt","w")
+           newtag.write((tagcontent))
+           await ctx.send("Tag "+(tagname)+" created!")
+       finally:
+           newtag.close()
+@pybot.command(pass_context=True)
+async def tagdelete(ctx,tagname):
+   os.chdir("C:/Users/Amla/Desktop/New folder/New folder")
+   try:
+       os.remove(str(tagname)+".txt")
+       await ctx.send(tagname + " Has been deleted")
+   except:
+       await ctx.send("Error: File not found / does not exist!\nFile Name: " + tagname)
+@pybot.command(pass_context=True)
+async def tags(ctx):
+   os.chdir("C:/Users/Amla/Desktop/New folder/New folder")
+   #for file in glob.glob("*.txt"):
+       #await ctx.send(str(file))
+   message = (glob.glob("*.txt"))
+   message = (str(message).replace("', '", "\n"))
+   message = (str(message).replace("['", ""))
+   message = (str(message).replace("']", ""))
+   message = (str(message).replace(".txt", ""))
+   if message == "[]":
+       message = ("No Tags Available")
+       embed = discord.Embed(color = ctx.message.author.color)
+       embed.description = (message)
+       embed.set_footer(text = "Tags")
+       await ctx.send(embed = embed)
+   else:
+       embed = discord.Embed(color = ctx.message.author.color)
+       embed.description = (message)
+       embed.set_footer(text = "Tags")
+       await ctx.send(embed = embed)
+#Weather API
+@pybot.command(pass_context=True)
+async def weather(ctx, *,city):
+    try:
+        addrs ="http://api.openweathermap.org/data/2.5/weather?APPID=ca59cc81a606b6dccc02606d308a349e&q="
+        url = addrs+city+'&units=metric'
+        raw_data = urlopen(url).read()
+        dict_data = raw_data.decode('utf-8')
+        data = json.loads(dict_data)
+
+        weather = data['weather']
+        temp = data['main']
+        wind = data['wind']
+        humidity  = temp['humidity']
+
+        message = ("**Weather Report : " + (city) + "**"+"\n\n"+(str(temp['temp'])+' °C  '+"\n"+"**"+str(weather[0]['main'])) + "**"\
+        +"\n\n:thermometer:\n" + ('Minimum Temp. : '+"**"+str(temp['temp_min'])+' °C  '+"**"+"\n"+'Maximum Temp. : '+"**" +str(temp['temp_max']))+' °C  '+"**"\
+        +"\n\n:cloud_tornado:\n"+('Wind Speed : '+"**"+str(wind['speed']))+"**" +"\n\n:white_sun_rain_cloud:\n"+ ('Humidity : '+"**"+str(humidity))+"**")
+        embed = discord.Embed(color = ctx.message.author.color)
+        embed.set_thumbnail(url="https://img1.etsystatic.com/000/0/5502191/il_340x270.304171905.jpg")
+        embed.description = (message)
+        await ctx.send(embed = embed)
+    except: 
+        await ctx.send("Error Occurred: Invalid city")
+#Music Stuff
+#Join VC 
+@pybot.command(pass_context = True)
+async def connect(ctx):
+    try:
+        global vc
+        vc = await ctx.author.voice.channel.connect()
+    except:
+        await ctx.send("I'm already connected to a voice channel!")
+#
+@pybot.command()
+async def play(ctx,*,name:str):
+    try:
+        os.chdir("C:/Users/Amla/Desktop/New folder/New folder (2)")
+        #vc.play(discord.FFmpegPCMAudio((queue[0])+'.mp3'), after=lambda e: print('done', e))
+        vc.play(discord.FFmpegPCMAudio((name)+'.mp3'))
+    except:
+        await ctx.send("Error:File not found OR Must use `&connect` first to connect to voice channel")
+@pybot.command()
+async def pause(ctx):
+    if vc.is_playing():
+        vc.pause()
+        await ctx.send("Pausing...")
+    else:
+        await ctx.send("Already Paused!")
+@pybot.command()
+async def resume(ctx):
+    if vc.is_playing():
+        await ctx.send("Already Playing!")
+    else:
+        vc.resume()
+@pybot.command()
+async def stop(ctx):
+    await ctx.send("Stopping...")
+    try:
+        vc.stop()
+        await ctx.guild.voice_client.disconnect()
+    except:
+        await ctx.guild.voice_client.disconnect()
+#disconnect VC
+@pybot.command(pass_context = True)
+async def disconnect(ctx):
+    try:
+        await ctx.guild.voice_client.disconnect()
+    except:
+        await ctx.send("I'm not connected to a voice channel!")
+    #for x in pybot.voice_clients:
+        #return await x.disconnect()
+#Info
+@pybot.command()
+async def userinfo(ctx,member:discord.Member):
+    server_join = member.joined_at.strftime("%d %b %Y %H:%M")
+    discord_join = member.created_at.strftime("%d %b %Y %H:%M")
+    roles = member.roles
+    roles = [x.name for x in member.roles] #if x.name != "@everyone"]
+    roles = (str(roles).replace("['", ""))
+    roles = (str(roles).replace("']", ""))
+    roles = (str(roles).replace("', '", " , "))
+
+    embed = discord.Embed(color = member.color)
+    embed.set_author(name = member.name)
+    embed.set_thumbnail(url=member.avatar_url)
+    embed.add_field(name="Status:\n ",value=member.status)
+    embed.add_field(name="Activity:\n",value=member.activity)
+    embed.add_field(name="Joined Server On:\n",value=server_join)
+    embed.add_field(name="Joined Discord On:\n",value=discord_join)
+    embed.add_field(name="Number of Roles:\n",value=(len(member.roles)))
+    embed.add_field(name="Roles:\n",value=roles)
+    await ctx.send(embed = embed)
+#invite
+@pybot.command()
+async def invite(ctx):
+    await ctx.send("https://discordapp.com/oauth2/authorize?client_id=427107456959643669&permissions=1609956439&scope=bot")
+#Events ----------------------------------------------------------------------------------
+@pybot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not found!\nUse `&help` to see a list of all available commands.")
+    elif isinstance(error,commands.MissingRequiredArgument):
+        await ctx.send("Error: Missing Argument / Incorrect Usage of Command")
+    elif isinstance(error,commands.NotOwner):
+        await ctx.send("*You Can't Tell Me What To Do!*\nYou Must Be My Owner / Developer!")
+    elif isinstance(error,commands.MissingPermissions):
+        await ctx.send("You Are Missing Permissions!")
+    elif isinstance(error,commands.BotMissingPermissions):
+        await ctx.send("Eror: I'm Missing Permissions")
+    elif isinstance(error,commands.TooManyArguments):
+        await ctx.send("Too many arguments. Incorrect Usage of command!")
+    elif isinstance(error,commands.UserInputError):
+        await ctx.send("Input Error: Likely to be incorrect usage of command")
+    else:
+        print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)\
+                        (traceback.print_exception(type(error),error,error.__traceback__, file=sys.stderr))
+#---------------------------------------------------------------------------------------
+cookielist = ["cookie","cake","@427107456959643669","waffle","cookie monster","cookiemonster","c00kie","co0kie","c0okie","c00ki3","cooki3","cook1e"\
+"c00k1e","c0ok1e","c0ok1e"]
+greetings = ["o/","0/","hi","hello","hey","howdy","greetings","hiya","hellu","morning","evening","afternoon"]
+kingname = ["owner","king","kingamla","amla","@290443638494724106"]
+
+antibulllying = ["die","fuck","ugly","hor","bitch","bish","fake","bad","hate","gay","nig","fock","prick","not wanted","nugget","cunt","disgusting","disgustang"\
+"horrible","stink","smell","nothing","worthless","stupid","mf","weird","mean","go away","shut","bloody","racist","death","little","rubbish",\
+"trash","animal","pathetic","idiot","piss","arse","bum","nobody wants you","nobody likes you","freak","gone","slap","hit","kill","nasty","steal","fight",\
+"beat","tough","thought","never","fat","greedy","disgusting","grim","eww","fag","clone","stfu","fook","fok","kys","smh","poo","hush","frick"]
+
+anger_response = ['Fight me!',"You'll never win against me","Get away, Pleb.","GRRRrrrr","You are **worthless** in my eyes","Pffftt..You're embarrassing!",\
+"Try Harder! You *creature*.","What are you?\nNothing","You really thought you can insult me, Pathetic!","Your words mean nothing to me",\
+"Don't mention me, you don't deserve to say my name!","Talking to me won't make you any smarter.","I suggest you brush your teeth before talking to me!",\
+"You'll have to kill me to make me stop... oh wait, you can't.","Disgusting humans","Your corpse is what will satisfy me the most.",\
+"All i see in you is stupidity","You make me laugh","You hideous filthy amimal","Is that all you can think of? You idiot",\
+"Get your stinky hands away from your keyboard and think about what you're doing","You deserve to live in a cage"]
+@pybot.event
+async def on_message(message):
+    if message.content.startswith("$") and message.author.id == 290443638494724106 and not message.author.bot:
+        channel = pybot.get_channel(354707735390060544)
+        async with channel.typing():
+            await asyncio.sleep(2)
+            await channel.send(message.content[1:])
+
+    # not message.author.bot and 
+    elif (any(s in message.content.lower() for s in antibulllying)) and (any(s in message.content.lower() for s in cookielist)):
+        await message.channel.send('What did you say to me {0.author.mention}!!!!!'.format(message))
+        await message.add_reaction("\U0001F47A")
+        await message.add_reaction("\U0001F52A")
+        await asyncio.sleep(1.5)#1.5
+        await message.channel.send('**Grrrrrrrr**')
+        fight = random.choice(anger_response)
+        await asyncio.sleep(5)#7
+        await message.channel.send(fight)
+
+    elif (not message.author.bot) and any(s in message.content.lower() for s in cookielist):
+        #await message.channel.send('*Did someone say cookies!?*')
+        await message.add_reaction("\U0001f440")
+        await message.add_reaction("\U0001f36a")
+
+    elif not message.author.bot and "bored" in message.content.lower() and (not "not bored" in message.content.lower()):
+        await message.channel.send('If you\'re bored, go do something! Smh {0.author.mention} !!!!'.format(message))
+
+    elif (not message.author.bot) and ((any(s in message.content.lower() for s in kingname)) and (any(s in message.content.lower() for s in antibulllying)) and "&say" in message.content):
+        await message.channel.send('I hate {0.author.mention}'.format(message))
+
+    elif ("disgusting" in message.content.lower() or "disgustang" in message.content.lower()):
+        await message.channel.send("https://www.tenor.co/w3Hm.gif")
+
+    #elif (not message.author.bot) and (any(message.content.lower().startswith(s) for s in greetings)):
+    #    await message.channel.send("Hi!")
+    
+    elif (not message.author.bot) and (any(c == message.content.lower() for c in greetings)):
+        await message.channel.send("Hi!")
+    
+    # elif (not message.author.bot) and ("yes" in message.content.lower()):
+    #     await message.add_reaction("\U0001F1F3")
+    #     await message.add_reaction("\U0001F1F4")
+
+    # elif (not message.author.bot) and ("no" in message.content.lower()):
+    #     await message.add_reaction("\U0001F1FE")
+    #     await message.add_reaction("\U0001F1EA")    
+    #     await message.add_reaction("\U0001F1F8")
+    #Required -----------------------------------------------------------------------------------------------------------
+    await pybot.process_commands(message)
+#------------------------------------------------------------------------------
+#Token
+pybot.run('NDI3MTA3NDU2OTU5NjQzNjY5.DZfwng.hVvDoqOgSK8szE17Pv8_3SwE6XI')
